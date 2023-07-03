@@ -12,7 +12,7 @@ What zbundler can do?
 
 To start using zbundler, after installing in the step below, you create a configuration file in your project root and run the build or watcher.
 
-```json
+```jsonc
 // zbundler.json
 [
     {
@@ -67,7 +67,7 @@ Just clone and compile this repository with dotnet build or Visual Studio.
 
 The use is so simple that it doesn't need documentation for this project, however, there is a code below explaining how the project's configuration file should be interpreted.
 
-```json
+```jsonc
 // the configuration file root object must be
 // an array.
 // it also supports comments.
