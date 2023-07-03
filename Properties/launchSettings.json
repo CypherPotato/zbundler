@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "Bundle4All": {
+      "commandName": "Project",
+      "commandLineArgs": "build"
+    }
+  }
+}
