@@ -20,7 +20,7 @@ internal class Program
     static void PrintHeader()
     {
         Console.WriteLine("zbundler command line application");
-        Console.WriteLine($"v.0.1");
+        Console.WriteLine($"v.0.2");
         Console.WriteLine();
     }
 

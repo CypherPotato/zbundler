@@ -35,6 +35,7 @@ partial class Build
 
         string configRelativePath = Directory.GetCurrentDirectory();
         StringBuilder rawJsFiles = new StringBuilder();
+        long totalRawSizes = 0;
 
         string[] files = configuration.GetIncludedContents(configRelativePath, "*.js");
 
@@ -42,13 +43,19 @@ partial class Build
         {
             string fileName = Path.GetFileName(file);
             string fileContents = File.ReadAllText(file);
+            totalRawSizes += fileContents.Length;
             string minified = Minify(fileContents, fileName);
             rawJsFiles.AppendLine(minified);
         }
 
+        if (!Build.isWatch)
+            PrintBuildMessage("JS", $"Compiled to {Size.ReadableSize(totalRawSizes)} -> {Size.ReadableSize(rawJsFiles.Length)}");
+
         string result = rawJsFiles.ToString();
         foreach (string outputFile in configuration.GetOutputPaths(configRelativePath))
         {
+            if (!Build.isWatch)
+                PrintBuildMessage("JS", $" ... to {Path.GetFileName(outputFile)}");
             File.WriteAllText(outputFile, result);
         }
 

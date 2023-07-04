@@ -11,8 +11,8 @@ namespace zbundler;
 
 partial class Build
 {
+    static DateTime lastWatchRun = DateTime.Now;
     static bool isWatch = false;
-    static object lockState = new object();
     static List<Configuration> watchingCssConfigurations = new List<Configuration>();
     static List<Configuration> watchingScssConfigurations = new List<Configuration>();
     static List<Configuration> watchingSassConfigurations = new List<Configuration>();
@@ -69,13 +69,22 @@ partial class Build
 
     static void OnChange(object sender, FileSystemEventArgs e)
     {
-        // delay before building, to assure that the user finished what
-        // he was typing
-        Thread.Sleep(300);
-        if (!Monitor.TryEnter(lockState))
+        if (DateTime.Now - lastWatchRun < TimeSpan.FromMilliseconds(1750))
         {
             return;
         }
+
+        bool hasChanges =
+               e.Name?.EndsWith(".css") == true
+            || e.Name?.EndsWith(".scss") == true
+            || e.Name?.EndsWith(".sass") == true
+            || e.Name?.EndsWith(".js") == true;
+
+        if (hasChanges)
+        {
+            Build.PrintInfo("Detected changes! Building...");
+        }
+
         try
         {
             if (e.Name?.EndsWith(".css") == true) BuildConfigurations(watchingCssConfigurations);
@@ -86,8 +95,8 @@ partial class Build
         catch { }
         finally
         {
-            Thread.Sleep(500);
-            Monitor.Exit(lockState);
+            Build.PrintInfo("Build done!");
+            lastWatchRun = DateTime.Now;
         }
     }
 
@@ -121,10 +130,32 @@ partial class Build
         }
     }
 
+    public static void PrintInfo(string message)
+    {
+        Console.ForegroundColor = ConsoleColor.DarkGray;
+        Console.Write(DateTime.Now.ToString("u"));
+        Console.ForegroundColor = ConsoleColor.Cyan;
+        Console.Write($"   {"[info]",6} ");
+        Console.ForegroundColor = ConsoleColor.Gray;
+        Console.WriteLine(message);
+    }
+
     public static void PrintBuildMessage(string mode, string message)
     {
+        Console.ForegroundColor = ConsoleColor.DarkGray;
+        Console.Write(DateTime.Now.ToString("u"));
         Console.ForegroundColor = ConsoleColor.Green;
         Console.Write($"   {"[" + mode + "]",6} ");
+        Console.ForegroundColor = ConsoleColor.Gray;
+        Console.WriteLine(message);
+    }
+
+    public static void PrintBuildError(string message)
+    {
+        Console.ForegroundColor = ConsoleColor.DarkGray;
+        Console.Write(DateTime.Now.ToString("u"));
+        Console.ForegroundColor = ConsoleColor.Red;
+        Console.Write($"   [error] ");
         Console.ForegroundColor = ConsoleColor.Gray;
         Console.WriteLine(message);
     }
@@ -152,14 +183,6 @@ partial class Build
     public static void Exit(int status)
     {
         if (!isWatch) Environment.Exit(status);
-    }
-
-    public static void PrintBuildError(string message)
-    {
-        Console.ForegroundColor = ConsoleColor.Red;
-        Console.Write($"   [error] ");
-        Console.ForegroundColor = ConsoleColor.Gray;
-        Console.WriteLine(message);
     }
 
     // -> https://stackoverflow.com/a/12364234/4698166

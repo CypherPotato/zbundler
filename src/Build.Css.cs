@@ -32,6 +32,7 @@ partial class Build
 
         string configRelativePath = Directory.GetCurrentDirectory();
         StringBuilder rawCssFiles = new StringBuilder();
+        long totalRawSizes = 0;
 
         string[] files = configuration.GetIncludedContents(configRelativePath, "*.css");
 
@@ -39,13 +40,19 @@ partial class Build
         {
             string fileName = Path.GetFileName(file);
             string fileContents = File.ReadAllText(file);
+            totalRawSizes += fileContents.Length;
             string minified = Minify(fileContents, fileName);
             rawCssFiles.Append(minified);
         }
 
+        if (!Build.isWatch)
+            PrintBuildMessage("CSS", $"Compiled to {Size.ReadableSize(totalRawSizes)} -> {Size.ReadableSize(rawCssFiles.Length)}");
+
         string result = rawCssFiles.ToString();
         foreach (string outputFile in configuration.GetOutputPaths(configRelativePath))
         {
+            if (!Build.isWatch)
+                PrintBuildMessage("CSS", $" ... to {Path.GetFileName(outputFile)}");
             File.WriteAllText(outputFile, result);
         }
 

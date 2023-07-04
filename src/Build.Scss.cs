@@ -80,21 +80,28 @@ partial class Build
 
         string configRelativePath = Directory.GetCurrentDirectory();
         StringBuilder rawCssFiles = new StringBuilder();
+        long totalRawSizes = 0;
 
-        string[] files = configuration.GetIncludedContents(configRelativePath, configuration.CompilationMode == CompilationMode.SASS ? "*.sass" : ".scss");
+        string[] files = configuration.GetIncludedContents(configRelativePath, configuration.CompilationMode == CompilationMode.SASS ? "*.sass" : "*.scss");
 
         foreach (string file in files)
         {
             string fileName = Path.GetFileName(file);
             string fileContents = File.ReadAllText(file);
+            totalRawSizes += fileContents.Length;
             string dirName = Path.GetDirectoryName(file)!;
             string minified = Minify(fileContents, fileName, dirName);
             rawCssFiles.Append(minified);
         }
 
+        if (!Build.isWatch)
+            PrintBuildMessage(lang, $"Compiled to {Size.ReadableSize(totalRawSizes)} -> {Size.ReadableSize(rawCssFiles.Length)}");
+
         string result = rawCssFiles.ToString();
         foreach (string outputFile in configuration.GetOutputPaths(configRelativePath))
         {
+            if (!Build.isWatch)
+                PrintBuildMessage(lang, $" ... to {Path.GetFileName(outputFile)}");
             File.WriteAllText(outputFile, result);
         }
 

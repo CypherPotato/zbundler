@@ -2,7 +2,7 @@
   "profiles": {
     "Bundle4All": {
       "commandName": "Project",
-      "commandLineArgs": "build"
+      "workingDirectory": "C:\\www\\xbuilder-tests"
     }
   }
 }
