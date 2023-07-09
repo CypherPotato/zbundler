@@ -20,7 +20,7 @@ internal class Program
     static void PrintHeader()
     {
         Console.WriteLine("zbundler command line application");
-        Console.WriteLine($"v.0.2");
+        Console.WriteLine($"v.0.3");
         Console.WriteLine();
     }
 
@@ -78,7 +78,7 @@ internal class Program
         if (args.Length < 1)
         {
             Console.WriteLine("Please enter a valid command or use the command below to get help:");
-            Console.WriteLine("\nbundle4all help");
+            Console.WriteLine("\nzbundler help");
             Environment.Exit(1);
         }
         else
@@ -156,6 +156,12 @@ internal class Program
                 Build.WatchConfigurations(configurations);
 
                 Thread.Sleep(-1);
+            }
+            else
+            {
+                Console.WriteLine($"Unrecognized command '{firstCommand}'. Use the command below to get help:");
+                Console.WriteLine("\nzbundler help");
+                Environment.Exit(1);
             }
         }
     }

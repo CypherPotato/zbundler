@@ -1,8 +1,0 @@
-{
-  "profiles": {
-    "Bundle4All": {
-      "commandName": "Project",
-      "workingDirectory": "C:\\www\\xbuilder-tests"
-    }
-  }
-}

@@ -7,6 +7,8 @@
 		<Nullable>enable</Nullable>
 		<AssemblyName>zbundler</AssemblyName>
 		<RootNamespace>zbundler</RootNamespace>
+		<PublishSingleFile>true</PublishSingleFile>
+		<DebugSymbols>false</DebugSymbols>
 	</PropertyGroup>
 
 	<ItemGroup>

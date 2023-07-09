@@ -11,6 +11,7 @@ namespace zbundler;
 
 partial class Build
 {
+    static object objWriteLock = new object();
     static DateTime lastWatchRun = DateTime.Now;
     static bool isWatch = false;
     static List<Configuration> watchingCssConfigurations = new List<Configuration>();
@@ -57,14 +58,14 @@ partial class Build
                 }
 
                 if (watchingPaths.Contains(absPath)) continue;
-                if (File.Exists(absPath) || Directory.Exists(absPath))
+                if (Directory.Exists(absPath))
                 {
                     Watch(absPath);
                     watchingPaths.Add(absPath);
                 }
             }
         }
-        Console.WriteLine("Watching {0} configuration(s)", configurations.Length);
+        Build.PrintInfo(string.Format("Watching {0} configuration(s)", configurations.Length));
     }
 
     static void OnChange(object sender, FileSystemEventArgs e)
@@ -158,6 +159,19 @@ partial class Build
         Console.Write($"   [error] ");
         Console.ForegroundColor = ConsoleColor.Gray;
         Console.WriteLine(message);
+    }
+
+    public static void PrintDebugMessage(string message)
+    {
+#if DEBUG
+        lock (objWriteLock)
+        {
+            Console.ForegroundColor = ConsoleColor.DarkGray;
+            Console.Write(DateTime.Now.ToString("u"));
+            Console.Write($"    [dbg] ");
+            Console.WriteLine(message);
+        }
+#endif
     }
 
     static string FetchUri(string uri)

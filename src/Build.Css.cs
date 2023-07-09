@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection.Metadata;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -32,21 +33,24 @@ partial class Build
 
         string configRelativePath = Directory.GetCurrentDirectory();
         StringBuilder rawCssFiles = new StringBuilder();
-        long totalRawSizes = 0;
 
-        string[] files = configuration.GetIncludedContents(configRelativePath, "*.css");
+        var files = configuration.GetIncludedContents(configRelativePath, "*.css");
 
-        foreach (string file in files)
+        foreach (var content in files)
         {
-            string fileName = Path.GetFileName(file);
-            string fileContents = File.ReadAllText(file);
-            totalRawSizes += fileContents.Length;
-            string minified = Minify(fileContents, fileName);
+            string minified;
+            if (content.Mode == Configuration.PathValue.File)
+            {
+                string fileContents = File.ReadAllText(content.Value);
+                minified = Minify(fileContents, Path.GetFileName(content.Value));
+            }
+            else
+            {
+                string fileContents = FetchUri(content.Value);
+                minified = Minify(fileContents, content.Value);
+            }
             rawCssFiles.Append(minified);
         }
-
-        if (!Build.isWatch)
-            PrintBuildMessage("CSS", $"Compiled to {Size.ReadableSize(totalRawSizes)} -> {Size.ReadableSize(rawCssFiles.Length)}");
 
         string result = rawCssFiles.ToString();
         foreach (string outputFile in configuration.GetOutputPaths(configRelativePath))

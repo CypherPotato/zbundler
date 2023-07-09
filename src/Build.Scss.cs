@@ -17,6 +17,8 @@ partial class Build
         string lang = configuration.CompilationMode == CompilationMode.SASS ? "SASS" : "SCSS";
         PrintBuildMessage(lang, $"Building {configuration.Label}...");
 
+        string tmpDir = Program.NormalizedCombine(Program.ExecutableDirectory, "scss-tmp");
+
         string? runnableName = Ext.GetExtFile("sass",
                 Program.CurrentOS switch
                 {
@@ -28,6 +30,7 @@ partial class Build
 
         string Minify(string s, string filename, string dirname)
         {
+            bool isStdIn = dirname == "" || !Directory.Exists(dirname);
             Encoding consoleEncoding = Console.OutputEncoding;
             ProcessStartInfo pinfo = new ProcessStartInfo()
             {
@@ -43,8 +46,6 @@ partial class Build
                 StandardInputEncoding = consoleEncoding
             };
 
-            pinfo.ArgumentList.Add("--stdin");
-            pinfo.ArgumentList.Add("--quiet");
             pinfo.ArgumentList.Add("--style=compressed");
 
             if (configuration.CompilationMode == CompilationMode.SASS)
@@ -56,17 +57,29 @@ partial class Build
                 pinfo.ArgumentList.Add("--no-indented");
             }
 
-            if (dirname != "")
+            if (isStdIn)
             {
-                pinfo.ArgumentList.Add($"--load-path={Build.EncodeParameterArgument(dirname)}");
+                pinfo.ArgumentList.Add("--stdin");
+                pinfo.ArgumentList.Add("--quiet");
+            }
+            else
+            {
+                string inOut = $"{dirname}:{tmpDir}";
+                pinfo.ArgumentList.Add(Build.EncodeParameterArgument(inOut));
+                pinfo.ArgumentList.Add("--no-source-map");
             }
 
             Process sn = Process.Start(pinfo)!;
-            sn.StandardInput.WriteLine(s);
-            sn.StandardInput.Close();
-            sn.WaitForExit();
-            string output = sn.StandardOutput.ReadToEnd();
+            if (isStdIn)
+            {
+                sn.StandardInput.WriteLine(s);
+                sn.StandardInput.Close();
+            }
+
+            sn.WaitForExit(TimeSpan.FromSeconds(10));
+
             string error = sn.StandardError.ReadToEnd();
+            string output;
 
             if (!string.IsNullOrEmpty(error))
             {
@@ -75,35 +88,59 @@ partial class Build
                 Build.Exit(6);
             }
 
-            return output.TrimEnd();
+            if (isStdIn)
+            {
+                output = sn.StandardOutput.ReadToEnd();
+            }
+            else
+            {
+                StringBuilder sb = new StringBuilder();
+                string[] outputFiles = Directory.GetFiles(tmpDir, "*.css", SearchOption.AllDirectories);
+                foreach (string file in outputFiles)
+                {
+                    string content = File.ReadAllText(file).Trim();
+                    sb.Append(content);
+                }
+                output = sb.ToString();
+            }
+
+            return output;
         }
 
         string configRelativePath = Directory.GetCurrentDirectory();
         StringBuilder rawCssFiles = new StringBuilder();
-        long totalRawSizes = 0;
 
-        string[] files = configuration.GetIncludedContents(configRelativePath, configuration.CompilationMode == CompilationMode.SASS ? "*.sass" : "*.scss");
+        var files = configuration.GetIncludedContents(configRelativePath, configuration.CompilationMode == CompilationMode.SASS ? "*.sass" : "*.scss", false);
 
-        foreach (string file in files)
+        foreach (var content in files)
         {
-            string fileName = Path.GetFileName(file);
-            string fileContents = File.ReadAllText(file);
-            totalRawSizes += fileContents.Length;
-            string dirName = Path.GetDirectoryName(file)!;
-            string minified = Minify(fileContents, fileName, dirName);
+            string minified;
+            if (content.Mode == Configuration.PathValue.File)
+            {
+                string fileContents = File.ReadAllText(content.Value);
+                minified = Minify(fileContents, Path.GetFileName(content.Value), Path.GetDirectoryName(content.Value)!);
+            }
+            else if (content.Mode == Configuration.PathValue.Directory)
+            {
+                minified = Minify("", "", content.Value);
+            }
+            else
+            {
+                string fileContents = FetchUri(content.Value);
+                minified = Minify(fileContents, content.Value, "");
+            }
             rawCssFiles.Append(minified);
         }
-
-        if (!Build.isWatch)
-            PrintBuildMessage(lang, $"Compiled to {Size.ReadableSize(totalRawSizes)} -> {Size.ReadableSize(rawCssFiles.Length)}");
 
         string result = rawCssFiles.ToString();
         foreach (string outputFile in configuration.GetOutputPaths(configRelativePath))
         {
             if (!Build.isWatch)
-                PrintBuildMessage(lang, $" ... to {Path.GetFileName(outputFile)}");
+                PrintBuildMessage(lang, $" + {Path.GetFileName(outputFile)}");
             File.WriteAllText(outputFile, result);
         }
+
+        Directory.Delete(tmpDir, true);
 
         PrintBuildMessage(lang, "Build sucessfull!");
     }

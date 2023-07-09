@@ -27,6 +27,8 @@ public class Configuration
     public string[] Output { get; set; } = Array.Empty<string>();
     public string[]? Exclude { get; set; } = null;
 
+    private List<string> includedFiles = new List<string>();
+
     public string[] GetOutputPaths(string basePath)
     {
         List<string> output = new List<string>();
@@ -54,9 +56,10 @@ public class Configuration
         return output.ToArray();
     }
 
-    public string[] GetIncludedContents(string basePath, string extension)
+    public PathItem[] GetIncludedContents(string basePath, string extension, bool canResolveDirectories = true)
     {
-        List<string> output = new List<string>();
+        includedFiles.Clear();
+        List<PathItem> output = new List<PathItem>();
         foreach (string includePath in this.Include)
         {
             string absPath;
@@ -74,19 +77,28 @@ public class Configuration
 
             if (File.Exists(absPath))
             {
-                output.Add(absPath);
+                output.Add(new PathItem(absPath, PathValue.File));
+                includedFiles.Add(absPath);
             }
             else if (Directory.Exists(absPath))
             {
-                foreach (string file in Directory.GetFiles(absPath, extension, SearchOption.AllDirectories))
+                if (canResolveDirectories)
                 {
-                    if (this.IsExcluded(file)) continue;
-                    output.Add(file);
+                    foreach (string file in Directory.GetFiles(absPath, extension, SearchOption.AllDirectories))
+                    {
+                        if (this.IsExcluded(file)) continue;
+                        output.Add(new PathItem(file, PathValue.File));
+                        includedFiles.Add(absPath);
+                    }
+                }
+                else
+                {
+                    output.Add(new PathItem(absPath, PathValue.Directory));
                 }
             }
             else if (Uri.TryCreate(includePath, UriKind.Absolute, out _))
             {
-                output.Add(includePath);
+                output.Add(new PathItem(includePath, PathValue.Link));
             }
             else
             {
@@ -99,6 +111,7 @@ public class Configuration
 
     public bool IsExcluded(string absolutePath)
     {
+        if (includedFiles.Contains(absolutePath)) return true;
         string normalizedAbsPath = absolutePath.Replace('\\', '/');
         if (this.Exclude?.Length > 0)
         {
@@ -111,5 +124,14 @@ public class Configuration
             }
         }
         return false;
+    }
+
+    public record PathItem(string Value, PathValue Mode);
+
+    public enum PathValue
+    {
+        File,
+        Directory,
+        Link
     }
 }
