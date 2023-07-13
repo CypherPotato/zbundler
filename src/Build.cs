@@ -2,7 +2,9 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
+using System.Runtime.Caching;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -12,36 +14,22 @@ namespace zbundler;
 partial class Build
 {
     static object objWriteLock = new object();
-    static DateTime lastWatchRun = DateTime.Now;
     static bool isWatch = false;
-    static List<Configuration> watchingCssConfigurations = new List<Configuration>();
-    static List<Configuration> watchingScssConfigurations = new List<Configuration>();
-    static List<Configuration> watchingSassConfigurations = new List<Configuration>();
-    static List<Configuration> watchingJsConfigurations = new List<Configuration>();
+    static List<Configuration> watchingConfigurations = new List<Configuration>();
     static Dictionary<string, string> fetchCache = new Dictionary<string, string>();
+
+    static List<FileSystemWatcher> watchers = new List<FileSystemWatcher>();
+    static MemoryCache cache = new MemoryCache("watcher");
 
     public static void WatchConfigurations(Configuration[] configurations)
     {
         isWatch = true;
+
         BuildConfigurations(configurations);
         List<string> watchingPaths = new List<string>();
         foreach (var configuration in configurations)
         {
-            switch (configuration.CompilationMode)
-            {
-                case CompilationMode.CSS:
-                    watchingCssConfigurations.Add(configuration);
-                    break;
-                case CompilationMode.SCSS:
-                    watchingScssConfigurations.Add(configuration);
-                    break;
-                case CompilationMode.SASS:
-                    watchingSassConfigurations.Add(configuration);
-                    break;
-                case CompilationMode.JS:
-                    watchingJsConfigurations.Add(configuration);
-                    break;
-            }
+            watchingConfigurations.Add(configuration);
 
             string configRelativePath = Directory.GetCurrentDirectory();
             foreach (string includePath in configuration.Include)
@@ -60,64 +48,58 @@ partial class Build
                 if (watchingPaths.Contains(absPath)) continue;
                 if (Directory.Exists(absPath))
                 {
-                    Watch(absPath);
+                    var watcher = new FileSystemWatcher(absPath);
+                    watcher.EnableRaisingEvents = true;
+                    watcher.IncludeSubdirectories = true;
+                    watcher.Changed += new FileSystemEventHandler(OnChanged);
+                    watchers.Add(watcher);
                     watchingPaths.Add(absPath);
                 }
             }
         }
         Build.PrintInfo(string.Format("Watching {0} configuration(s)", configurations.Length));
+        Thread.Sleep(-1);
     }
 
-    static void OnChange(object sender, FileSystemEventArgs e)
+    static void OnChanged(object source, FileSystemEventArgs e)
     {
-        if (DateTime.Now - lastWatchRun < TimeSpan.FromMilliseconds(1750))
-        {
-            return;
-        }
-
-        bool hasChanges =
-               e.Name?.EndsWith(".css") == true
-            || e.Name?.EndsWith(".scss") == true
-            || e.Name?.EndsWith(".sass") == true
-            || e.Name?.EndsWith(".js") == true;
-
-        if (hasChanges)
-        {
-            Build.PrintInfo("Detected changes! Building...");
-        }
-
+        Thread.Sleep(250);
         try
         {
-            if (e.Name?.EndsWith(".css") == true) BuildConfigurations(watchingCssConfigurations);
-            if (e.Name?.EndsWith(".scss") == true) BuildConfigurations(watchingScssConfigurations);
-            if (e.Name?.EndsWith(".sass") == true) BuildConfigurations(watchingSassConfigurations);
-            if (e.Name?.EndsWith(".js") == true) BuildConfigurations(watchingJsConfigurations);
+            if (e.Name?.EndsWith(".css") == true) BuildConfigurations(watchingConfigurations, CompilationMode.CSS);
+            if (e.Name?.EndsWith(".js") == true) BuildConfigurations(watchingConfigurations, CompilationMode.JS);
+            if (e.Name?.EndsWith(".scss") == true) BuildConfigurations(watchingConfigurations, CompilationMode.SCSS);
+            if (e.Name?.EndsWith(".sass") == true) BuildConfigurations(watchingConfigurations, CompilationMode.SASS);
+            if (e.Name?.EndsWith(".md") == true) BuildConfigurations(watchingConfigurations, CompilationMode.MD);
         }
-        catch { }
+        catch (Exception ex)
+        {
+            Build.PrintBuildError($"Error caught when trying to compile {e.Name}: {ex.Message}");
+        }
         finally
         {
-            Build.PrintInfo("Build done!");
-            lastWatchRun = DateTime.Now;
         }
     }
 
-    public static async void Watch(string path)
-    {
-        await Task.Run(() =>
-        {
-            FileSystemWatcher watcher = new FileSystemWatcher(path);
-            watcher.EnableRaisingEvents = true;
-            watcher.IncludeSubdirectories = true;
-            watcher.Changed += OnChange;
-        });
-    }
-
-    public static void BuildConfigurations(IEnumerable<Configuration> configurations)
+    public static void BuildConfigurations(IEnumerable<Configuration> configurations, CompilationMode? filter = null)
     {
         foreach (var configuration in configurations)
         {
+            if (filter != null && configuration.CompilationMode != filter)
+            {
+                continue;
+            }
+            if (cache.Contains(configuration.Ref))
+            {
+                continue;
+            }
+            cache.Add(configuration.Ref, true, new CacheItemPolicy() { SlidingExpiration = TimeSpan.FromMilliseconds(1000) });
+
             switch (configuration.CompilationMode)
             {
+                case CompilationMode.MD:
+                    BuildMd(configuration);
+                    break;
                 case CompilationMode.CSS:
                     BuildCSS(configuration);
                     break;
@@ -156,7 +138,7 @@ partial class Build
         Console.ForegroundColor = ConsoleColor.DarkGray;
         Console.Write(DateTime.Now.ToString("u"));
         Console.ForegroundColor = ConsoleColor.Red;
-        Console.Write($"   [error] ");
+        Console.Write($"  [error] ");
         Console.ForegroundColor = ConsoleColor.Gray;
         Console.WriteLine(message);
     }

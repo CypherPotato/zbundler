@@ -1,4 +1,6 @@
-﻿using System;
+﻿using CommandLine;
+using CommandLine.Text;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -15,19 +17,32 @@ public enum CompilationMode
     JS,
     CSS,
     SASS,
-    SCSS
+    SCSS,
+    MD
 }
 
+[Verb("run", false, HelpText = "Run the builder without an configuration file, using command line arguments.")]
 public class Configuration
 {
+    [Option('m', "mode", Required = true, HelpText = "Sets the compilation mode.")]
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public CompilationMode CompilationMode { get; set; }
+
+    [Option('l', "label", Required = false, HelpText = "Sets the label for the compilated resource.")]
     public string? Label { get; set; }
-    public string[] Include { get; set; } = Array.Empty<string>();
-    public string[] Output { get; set; } = Array.Empty<string>();
-    public string[]? Exclude { get; set; } = null;
+
+    [Option('i', "include", Required = true, HelpText = "Includes an file, directory or link. Path is relative to the current directory.")]
+    public IEnumerable<string> Include { get; set; } = Array.Empty<string>();
+
+    [Option('o', "output", Required = true, HelpText = "Sets an output path to file.")]
+    public IEnumerable<string> Output { get; set; } = Array.Empty<string>();
+
+    [Option('x', "exclude", Required = false, HelpText = "Sets excluded file patterns from resolved absolute paths.")]
+    public IEnumerable<string>? Exclude { get; set; } = null;
 
     private List<string> includedFiles = new List<string>();
+
+    internal string Ref = Random.Shared.Next().ToString();
 
     public string[] GetOutputPaths(string basePath)
     {
@@ -113,7 +128,7 @@ public class Configuration
     {
         if (includedFiles.Contains(absolutePath)) return true;
         string normalizedAbsPath = absolutePath.Replace('\\', '/');
-        if (this.Exclude?.Length > 0)
+        if (this.Exclude?.Count() > 0)
         {
             foreach (var item in this.Exclude)
             {

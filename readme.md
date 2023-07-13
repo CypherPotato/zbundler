@@ -4,9 +4,10 @@ zbundler is another web-assets bundler, but compatible with any kind of project,
 
 What zbundler can do?
 
-- Compile CSS to an minified CSS;
-- Compile SCSS/SASS to an minified CSS;
-- Compile JavaScript to an minified Javascript.
+- Compile CSS to an minified CSS.
+- Compile SCSS/SASS to an minified CSS.
+- Compile Javascript to an minified Javascript.
+- Compile Markdown files to HTML files.
 
 ## Setup
 
@@ -44,7 +45,7 @@ To start using zbundler, after installing in the step below, you create a config
 And then, you can compile your files using:
 
 ```
-$ zbundler build zbundler.json
+$ zbundler build /path/to/zbundler.json
 ```
 
 That's all!
@@ -58,6 +59,66 @@ Then, you can download the zbundler latest version in the [Releases](https://git
 After downloading it, put somewhere of your preference and add the choosen directory path to your operating system's environment variable so you can quickly access the zbundler executable.
 
 And ready, zbundler is installed. You can start using it in your projects as mentioned in the step above.
+
+## Using zbundler
+
+When you run `zbundler` for the first time, you have `build`, `watch` and `run` options.
+
+```
+zbundler by cypherpotato
+distributed under MIT license
+
+  build      Builds the distribution files to the output directory, from an
+             configuration file.
+
+  watch      Starts watching the input files from the configuration file and
+             compiles as soon as there is a change in the files.
+
+  run        Run the builder without an configuration file, using command line
+             arguments.
+
+  help       Display more information on a specific command.
+
+  version    Display version information.
+```
+
+- `build`: interprets the configuration file and compiles all configurations from the file.
+
+    Examples:
+
+    ```
+    zbundler build              ; will search for zbundler.json in the current directory
+    zbundler build ../config.json
+    zbundler build C:/www/myproject/config.json
+    ```
+
+- `watch`: compiles the configuration whenever a file of the corresponding type is
+  modified, created or deleted. This option listens to folders for include fields,
+  but does not listen to individual links or files.
+
+    The command syntax is similar to the `build` command.
+
+- `run`: runs a configuration sent from the command line, without specifying a configuration file.
+
+    Examples:
+ 
+    ```
+      -m, --mode       Required. Sets the compilation mode. Valid values: JS, CSS,
+                       SASS, SCSS, MD
+
+      -l, --label      Sets the label for the compilated resource.
+
+      -i, --include    Required. Includes an file, directory or link. Path is
+                       relative to the current directory.
+
+      -o, --output     Required. Sets an output path to file.
+
+      -x, --exclude    Sets excluded file patterns from resolved absolute paths.
+
+    zbundler run -m css -i file1.css -i file2.css -o files.min.css
+    zbundler run -m js -i ../scripts -o ./dist/app.js
+    zbundler run -m md ./docs -o ./docs/html -x .html -x .md2
+    ```    
 
 ## Building zbundler
 
@@ -78,7 +139,7 @@ The use is so simple that it doesn't need documentation for this project, howeve
     {
         // compilationMode is what you are going to compile in this
         // specific configuration.
-        // must be CSS|SCSS|SASS|JS
+        // must be CSS|SCSS|SASS|JS|MD
         "compilationMode": "CSS",
 
         // label is an display-only text to show in the build/watch
@@ -118,11 +179,12 @@ The use is so simple that it doesn't need documentation for this project, howeve
         // are resolved.
         // 
         // a raw string comparison is done to validate that the path includes
-        // the specified part, normalizing both inputs and using an
+        // the specified part, normalizing both inputs and performing an
         // insensitive-case comparison.
         "exclude": [
             "/vendor/",
-            ".do-not-include.js"
+            ".do-not-include.js",
+            ".jsx"
         ]
     }
 ]
@@ -131,4 +193,5 @@ The use is so simple that it doesn't need documentation for this project, howeve
 ## Credits
 
 - Used [NUglify](https://github.com/trullock/NUglify) on the CSS and JS minifier, which it is an folk of [Ajaxmin](https://github.com/microsoft/ajaxmin).
+- Used [markdig](https://github.com/xoofx/markdig) on the Markdown compiler.
 - Used [dart-sass](https://github.com/sass/dart-sass) binaries to compile SASS/SCSS files.

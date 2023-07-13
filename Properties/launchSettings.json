@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "zbundler": {
+      "commandName": "Project",
+      "commandLineArgs": "watch",
+      "workingDirectory": "C:\\www\\app.beyousmile"
+    }
+  }
+}
