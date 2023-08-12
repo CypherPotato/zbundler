@@ -1,8 +1,0 @@
-{
-  "profiles": {
-    "zbundler": {
-      "commandName": "Project",
-      "commandLineArgs": "version"
-    }
-  }
-}

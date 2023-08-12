@@ -4,10 +4,10 @@ zbundler is another web-assets bundler, but compatible with any kind of project,
 
 What zbundler can do?
 
-- Compile CSS to an minified CSS.
-- Compile SCSS/SASS to an minified CSS.
-- Compile Javascript to an minified Javascript.
-- Compile Markdown files to HTML files.
+- Compile CSS to an minified CSS. *Compiles many CSS -> one CSS.*
+- Compile SCSS/SASS to an minified CSS. *Compiles many SCSS/SASS -> one CSS*
+- Compile Javascript to an minified Javascript. *Compiles many JS -> one JS*
+- Compile Markdown files to HTML files. *Compiles one each MD -> one HTML*
 
 ## Setup
 
@@ -103,17 +103,19 @@ distributed under MIT license
     Examples:
  
     ```
-      -m, --mode       Required. Sets the compilation mode. Valid values: JS, CSS,
-                       SASS, SCSS, MD
+      -m, --mode         Required. Sets the compilation mode. Valid values: JS, CSS,
+                         SASS, SCSS, MD
 
-      -l, --label      Sets the label for the compilated resource.
+      -l, --label        Sets the label for the compilated resource.
 
-      -i, --include    Required. Includes an file, directory or link. Path is
-                       relative to the current directory.
+      -i, --include      Required. Includes an file, directory or link. Path is
+                         relative to the current directory.
 
-      -o, --output     Required. Sets an output path to file.
+      -o, --output       Required. Sets an output path to file.
 
-      -x, --exclude    Sets excluded file patterns from resolved absolute paths.
+      -x, --exclude      Sets excluded file patterns from resolved absolute paths.
+
+      -e, --extension    Set an additional extension to the builder.
 
     zbundler run -m css -i file1.css -i file2.css -o files.min.css
     zbundler run -m js -i ../scripts -o ./dist/app.js
@@ -152,10 +154,12 @@ The use is so simple that it doesn't need documentation for this project, howeve
         //
         // using folders will always look for files ending in the official
         // ending of the chosen language, and the search is always recursive.
+        // you can specify additional extensions in the additionalExtensions prop.
         //  CSS  -> .css
         //  SCSS -> .scss
         //  SASS -> .sass
         //  JS   -> .js
+        //  MD   -> .md
         "include": [
             "../relative/path/to/directory",
             "C:/absolute/path/to/file.css",
@@ -185,6 +189,15 @@ The use is so simple that it doesn't need documentation for this project, howeve
             "/vendor/",
             ".do-not-include.js",
             ".jsx"
+        ],
+
+        // includes additional file extensions to the compiler, which
+        // it should include in the compilation.
+        //
+        // it must contain the leading dot
+        "additionalExtensions": [
+            ".jsx",
+            ".ajs"
         ]
     }
 ]
