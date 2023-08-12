@@ -65,7 +65,7 @@ partial class Build
             else
             {
                 string inOut = $"{dirname}:{tmpDir}";
-                pinfo.ArgumentList.Add(Build.EncodeParameterArgument(inOut));
+                pinfo.ArgumentList.Add(inOut);
                 pinfo.ArgumentList.Add("--no-source-map");
             }
 
@@ -95,6 +95,11 @@ partial class Build
             else
             {
                 StringBuilder sb = new StringBuilder();
+                if (!Directory.Exists(tmpDir))
+                {
+                    PrintBuildMessage(lang, "SCSS: no files were built.");
+                    return "";
+                }
                 string[] outputFiles = Directory.GetFiles(tmpDir, "*.css", SearchOption.AllDirectories);
                 foreach (string file in outputFiles)
                 {
@@ -110,7 +115,7 @@ partial class Build
         string configRelativePath = Directory.GetCurrentDirectory();
         StringBuilder rawCssFiles = new StringBuilder();
 
-        var files = configuration.GetIncludedContents(configRelativePath, configuration.CompilationMode == CompilationMode.SASS ? "*.sass" : "*.scss", false);
+        var files = configuration.GetIncludedContents(configRelativePath, false);
 
         foreach (var content in files)
         {
@@ -133,10 +138,13 @@ partial class Build
         }
 
         string result = rawCssFiles.ToString();
+
+        if (result == "") return;
+
         foreach (string outputFile in configuration.GetOutputPaths(configRelativePath))
         {
             if (!Build.isWatch)
-                PrintBuildMessage(lang, $" + {Path.GetFileName(outputFile)}");
+                PrintBuildMessage(lang, $"+ {Path.GetFileName(outputFile)}");
             File.WriteAllText(outputFile, result);
         }
 

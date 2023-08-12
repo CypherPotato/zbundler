@@ -34,7 +34,7 @@ partial class Build
         string configRelativePath = Directory.GetCurrentDirectory();
         StringBuilder rawCssFiles = new StringBuilder();
 
-        var files = configuration.GetIncludedContents(configRelativePath, "*.css");
+        var files = configuration.GetIncludedContents(configRelativePath);
 
         foreach (var content in files)
         {
@@ -56,7 +56,7 @@ partial class Build
         foreach (string outputFile in configuration.GetOutputPaths(configRelativePath))
         {
             if (!Build.isWatch)
-                PrintBuildMessage("CSS", $" ... to {Path.GetFileName(outputFile)}");
+                PrintBuildMessage("CSS", $"+ {Path.GetFileName(outputFile)}");
             File.WriteAllText(outputFile, result);
         }
 

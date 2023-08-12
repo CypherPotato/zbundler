@@ -28,32 +28,30 @@ partial class Build
         }
 
         string configRelativePath = Directory.GetCurrentDirectory();
-        StringBuilder rawCssFiles = new StringBuilder();
 
-        var files = configuration.GetIncludedContents(configRelativePath, "*.md");
+        var files = configuration.GetIncludedContents(configRelativePath);
 
-        foreach (var content in files)
+        foreach (var file in files)
         {
             string minified;
-            if (content.Mode == Configuration.PathValue.File)
+            if (file.Mode == Configuration.PathValue.File)
             {
-                string fileContents = File.ReadAllText(content.Value);
-                minified = Minify(fileContents, Path.GetFileName(content.Value));
+                string fileContents = File.ReadAllText(file.Value);
+                minified = Minify(fileContents, Path.GetFileName(file.Value));
             }
             else
             {
-                string fileContents = FetchUri(content.Value);
-                minified = Minify(fileContents, content.Value);
+                string fileContents = FetchUri(file.Value);
+                minified = Minify(fileContents, file.Value);
             }
-            rawCssFiles.Append(minified);
-        }
 
-        string result = rawCssFiles.ToString();
-        foreach (string outputFile in configuration.GetOutputPaths(configRelativePath))
-        {
-            if (!Build.isWatch)
-                PrintBuildMessage("MD", $" ... to {Path.GetFileName(outputFile)}");
-            File.WriteAllText(outputFile, result);
+            foreach (string rawOutFile in configuration.GetOutputPaths(configRelativePath))
+            {
+                string outputFile = Program.ExportOutputFilename(file.Value, rawOutFile);
+                if (!Build.isWatch)
+                    PrintBuildMessage("MD", $"+ {Path.GetFileName(outputFile)}");
+                File.WriteAllText(outputFile, minified);
+            }
         }
 
         PrintBuildMessage("MD", "Build sucessfull!");

@@ -9,8 +9,7 @@
 		<RootNamespace>zbundler</RootNamespace>
 		<PublishSingleFile>true</PublishSingleFile>
 		<DebugSymbols>false</DebugSymbols>
-		<AssemblyVersion>0.4</AssemblyVersion>
-		<FileVersion>0.4</FileVersion>
+		<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -24,6 +23,25 @@
 		<Content Include="ext\**">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</Content>
+	</ItemGroup>
+
+	<ItemGroup>
+		<Service Include="{508349b6-6b84-4df5-91f0-309beebad82d}" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Compile Update="src\AssemblyInfo.cs">
+			<DesignTime>True</DesignTime>
+			<AutoGen>True</AutoGen>
+			<DependentUpon>AssemblyInfo.tt</DependentUpon>
+		</Compile>
+	</ItemGroup>
+
+	<ItemGroup>
+		<None Update="src\AssemblyInfo.tt">
+			<Generator>TextTemplatingFileGenerator</Generator>
+			<LastGenOutput>AssemblyInfo.cs</LastGenOutput>
+		</None>
 	</ItemGroup>
 
 </Project>

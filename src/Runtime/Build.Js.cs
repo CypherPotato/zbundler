@@ -36,7 +36,7 @@ partial class Build
         string configRelativePath = Directory.GetCurrentDirectory();
         StringBuilder rawJsFiles = new StringBuilder();
 
-        var files = configuration.GetIncludedContents(configRelativePath, "*.js");
+        var files = configuration.GetIncludedContents(configRelativePath);
 
         foreach (var content in files)
         {
@@ -58,7 +58,7 @@ partial class Build
         foreach (string outputFile in configuration.GetOutputPaths(configRelativePath))
         {
             if (!Build.isWatch)
-                PrintBuildMessage("JS", $" ... to {Path.GetFileName(outputFile)}");
+                PrintBuildMessage("JS", $"+ {Path.GetFileName(outputFile)}");
             File.WriteAllText(outputFile, result);
         }
 

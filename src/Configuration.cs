@@ -40,6 +40,9 @@ public class Configuration
     [Option('x', "exclude", Required = false, HelpText = "Sets excluded file patterns from resolved absolute paths.")]
     public IEnumerable<string>? Exclude { get; set; } = null;
 
+    [Option('e', "extension", Required = false, HelpText = "Set an additional extension to the builder.")]
+    public IEnumerable<string>? AdditionalExtensions { get; set; } = Array.Empty<string>();
+
     private List<string> includedFiles = new List<string>();
 
     internal string Ref = Random.Shared.Next().ToString();
@@ -71,7 +74,23 @@ public class Configuration
         return output.ToArray();
     }
 
-    public PathItem[] GetIncludedContents(string basePath, string extension, bool canResolveDirectories = true)
+    public bool IsExtensionIncluded(string extension)
+    {
+        bool isBaseExtensionIncluded = CompilationMode switch
+        {
+            CompilationMode.JS => extension.EndsWith(".js"),
+            CompilationMode.CSS => extension.EndsWith(".css"),
+            CompilationMode.SASS => extension.EndsWith(".sass"),
+            CompilationMode.SCSS => extension.EndsWith(".scss"),
+            CompilationMode.MD => extension.EndsWith(".md"),
+            _ => false
+        };
+
+        bool isAddExtensionIncluded = AdditionalExtensions?.Contains(extension) == true;
+        return isBaseExtensionIncluded || isAddExtensionIncluded;
+    }
+
+    public PathItem[] GetIncludedContents(string basePath, bool canResolveDirectoriesContents = true)
     {
         includedFiles.Clear();
         List<PathItem> output = new List<PathItem>();
@@ -97,11 +116,20 @@ public class Configuration
             }
             else if (Directory.Exists(absPath))
             {
-                if (canResolveDirectories)
+                if (canResolveDirectoriesContents)
                 {
-                    foreach (string file in Directory.GetFiles(absPath, extension, SearchOption.AllDirectories))
+                    foreach (string file in Directory.GetFiles(absPath, "*.*", SearchOption.AllDirectories))
                     {
-                        if (this.IsExcluded(file)) continue;
+                        string extension = Path.GetExtension(file).ToLower();
+
+                        bool isExcluded = IsExcluded(file);
+                        bool isExtIncluded = IsExtensionIncluded(extension);
+
+                        if (isExcluded || !isExtIncluded)
+                        {
+                            continue;
+                        }
+
                         output.Add(new PathItem(file, PathValue.File));
                         includedFiles.Add(absPath);
                     }

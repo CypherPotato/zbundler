@@ -66,11 +66,14 @@ partial class Build
         Thread.Sleep(250);
         try
         {
-            if (e.Name?.EndsWith(".css") == true) BuildConfigurations(watchingConfigurations, CompilationMode.CSS);
-            if (e.Name?.EndsWith(".js") == true) BuildConfigurations(watchingConfigurations, CompilationMode.JS);
-            if (e.Name?.EndsWith(".scss") == true) BuildConfigurations(watchingConfigurations, CompilationMode.SCSS);
-            if (e.Name?.EndsWith(".sass") == true) BuildConfigurations(watchingConfigurations, CompilationMode.SASS);
-            if (e.Name?.EndsWith(".md") == true) BuildConfigurations(watchingConfigurations, CompilationMode.MD);
+            if (e.Name == null) return;
+            foreach (Configuration config in watchingConfigurations)
+            {
+                if (config.IsExtensionIncluded(Path.GetExtension(e.Name)))
+                {
+                    BuildConfigurations(watchingConfigurations, config.CompilationMode);
+                }
+            }
         }
         catch (Exception ex)
         {

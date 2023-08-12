@@ -161,6 +161,18 @@ internal class Program
         return configurations;
     }
 
+    public static string ExportOutputFilename(string originalFilename, string directory)
+    {
+        string fullName = Path.GetFileName(originalFilename);
+        string fullNameWoExt = Path.GetFileNameWithoutExtension(originalFilename);
+        string ext = Path.GetExtension(originalFilename);
+        directory = directory.Replace("%n", fullName);
+        directory = directory.Replace("%x", fullNameWoExt);
+        directory = directory.Replace("%e", ext);
+
+        return directory;
+    }
+
     // -> https://cy.proj.pw/#/blog-post?link=normalizando-path-combine.md
     public static string NormalizedCombine(params string[] paths)
     {
