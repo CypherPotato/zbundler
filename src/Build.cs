@@ -1,13 +1,6 @@
-﻿using NUglify;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Runtime.Caching;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
+﻿using System.Runtime.Caching;
+using zbundler.src;
+using zbundler.src.Programs;
 
 namespace zbundler;
 
@@ -16,10 +9,8 @@ partial class Build
     static object objWriteLock = new object();
     static bool isWatch = false;
     static List<Configuration> watchingConfigurations = new List<Configuration>();
-    static Dictionary<string, string> fetchCache = new Dictionary<string, string>();
-
     static List<FileSystemWatcher> watchers = new List<FileSystemWatcher>();
-    static MemoryCache cache = new MemoryCache("watcher");
+    static MemoryCache watcherCache = new MemoryCache("watcher");
 
     public static void WatchConfigurations(Configuration[] configurations)
     {
@@ -63,134 +54,100 @@ partial class Build
 
     static void OnChanged(object source, FileSystemEventArgs e)
     {
-        Thread.Sleep(250);
-        try
+        if (watcherCache.Contains("watch"))
         {
-            if (e.Name == null) return;
-            foreach (Configuration config in watchingConfigurations)
+            return;
+        }
+        watcherCache.Set("watch", true, DateTimeOffset.Now.AddMilliseconds(1000));
+
+        CacheIO.Invalidate(e.FullPath);
+        Thread.Sleep(350); // wait for file save
+
+        if (e.Name == null) return;
+        bool anyRun = false;
+        PrintInfo("Building...");
+        Console.Clear();
+        foreach (Configuration config in watchingConfigurations)
+        {
+            if (config.IsExtensionIncluded(Path.GetExtension(e.Name)))
             {
-                if (config.IsExtensionIncluded(Path.GetExtension(e.Name)))
-                {
-                    BuildConfigurations(watchingConfigurations, config.CompilationMode);
-                }
+                bool result = BuildConfigurations(watchingConfigurations, config.CompilationMode);
+                anyRun |= result;
             }
         }
-        catch (Exception ex)
+        if (anyRun)
         {
-            Build.PrintBuildError($"Error caught when trying to compile {e.Name}: {ex.Message}");
+            PrintInfo($"{e.Name} built.");
         }
-        finally
+        else
         {
+            PrintInfo("Nothing built.");
         }
     }
 
-    public static void BuildConfigurations(IEnumerable<Configuration> configurations, CompilationMode? filter = null)
+    public static bool BuildConfigurations(IEnumerable<Configuration> configurations, CompilationMode? filter = null)
     {
+        bool any = false;
         foreach (var configuration in configurations)
         {
             if (filter != null && configuration.CompilationMode != filter)
             {
                 continue;
             }
-            if (cache.Contains(configuration.Ref))
+            if (watcherCache.Contains(configuration.Ref))
             {
                 continue;
             }
-            cache.Add(configuration.Ref, true, new CacheItemPolicy() { SlidingExpiration = TimeSpan.FromMilliseconds(1000) });
+            watcherCache.Add(configuration.Ref, true, new CacheItemPolicy() { SlidingExpiration = TimeSpan.FromMilliseconds(600) });
 
-            switch (configuration.CompilationMode)
+            PrintInfo($"Building {configuration.Label} ({configuration.CompilationMode})");
+            try
             {
-                case CompilationMode.MD:
-                    BuildMd(configuration);
-                    break;
-                case CompilationMode.CSS:
-                    BuildCSS(configuration);
-                    break;
-                case CompilationMode.SCSS or CompilationMode.SASS:
-                    BuildSCSS(configuration);
-                    break;
-                case CompilationMode.JS:
-                    BuildJS(configuration);
-                    break;
+                switch (configuration.CompilationMode)
+                {
+                    case CompilationMode.CSS:
+                        new CssBuilder().Build(configuration);
+                        break;
+                    case CompilationMode.SCSS:
+                        new ScssBuilder().Build(configuration);
+                        break;
+                    case CompilationMode.SASS:
+                        new SassBuilder().Build(configuration);
+                        break;
+                    case CompilationMode.JS:
+                        new JsBuilder().Build(configuration);
+                        break;
+                }
+                any = true;
+            }
+            catch (Exception ex)
+            {
+                PrintBuildError(ex.Message);
+                SafeExit(1);
             }
         }
+        return any;
     }
 
-    public static void PrintInfo(string message)
+    public static void PrintMessage(ConsoleColor labelColor, string label, string message)
     {
-        Console.ForegroundColor = ConsoleColor.DarkGray;
-        Console.Write(DateTime.Now.ToString("u"));
-        Console.ForegroundColor = ConsoleColor.Cyan;
-        Console.Write($"   {"[info]",6} ");
-        Console.ForegroundColor = ConsoleColor.Gray;
-        Console.WriteLine(message);
-    }
-
-    public static void PrintBuildMessage(string mode, string message)
-    {
-        Console.ForegroundColor = ConsoleColor.DarkGray;
-        Console.Write(DateTime.Now.ToString("u"));
-        Console.ForegroundColor = ConsoleColor.Green;
-        Console.Write($"   {"[" + mode + "]",6} ");
-        Console.ForegroundColor = ConsoleColor.Gray;
-        Console.WriteLine(message);
-    }
-
-    public static void PrintBuildError(string message)
-    {
-        Console.ForegroundColor = ConsoleColor.DarkGray;
-        Console.Write(DateTime.Now.ToString("u"));
-        Console.ForegroundColor = ConsoleColor.Red;
-        Console.Write($"  [error] ");
-        Console.ForegroundColor = ConsoleColor.Gray;
-        Console.WriteLine(message);
-    }
-
-    public static void PrintDebugMessage(string message)
-    {
-#if DEBUG
         lock (objWriteLock)
         {
             Console.ForegroundColor = ConsoleColor.DarkGray;
             Console.Write(DateTime.Now.ToString("u"));
-            Console.Write($"    [dbg] ");
+            Console.ForegroundColor = labelColor;
+            Console.Write($"{label,12} ");
+            Console.ForegroundColor = ConsoleColor.Gray;
             Console.WriteLine(message);
         }
-#endif
     }
 
-    static string FetchUri(string uri)
-    {
-        if (fetchCache.ContainsKey(uri)) return fetchCache[uri];
-        using (HttpClient client = new HttpClient())
-        {
-            HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Get, uri);
-            HttpResponseMessage res = client.Send(req);
-            if (!res.IsSuccessStatusCode)
-            {
-                PrintBuildError($"Got HTTP {(int)res.StatusCode} when trying to fetch {uri}.");
-                Environment.Exit(1);
-                return "";
-            }
+    public static void PrintInfo(string message) => PrintMessage(ConsoleColor.Blue, "info", message);
+    public static void PrintBuildError(string message) => PrintMessage(ConsoleColor.Red, "error", message);
+    public static void PrintDebugMessage(string message) => PrintMessage(ConsoleColor.Gray, "dbg", message);
 
-            string result = res.Content.ReadAsStringAsync().Result;
-            fetchCache.Add(uri, result);
-            return result;
-        }
-    }
-
-    public static void Exit(int status)
+    public static void SafeExit(int status)
     {
         if (!isWatch) Environment.Exit(status);
-    }
-
-    // -> https://stackoverflow.com/a/12364234/4698166
-    public static string EncodeParameterArgument(string original)
-    {
-        if (string.IsNullOrEmpty(original))
-            return original;
-        string value = Regex.Replace(original, @"(\\*)" + "\"", @"$1\$0");
-        value = Regex.Replace(value, @"^(.*\s.*?)(\\*)$", "\"$1$2$2\"");
-        return value;
     }
 }

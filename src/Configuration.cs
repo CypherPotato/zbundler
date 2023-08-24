@@ -1,14 +1,5 @@
 ﻿using CommandLine;
-using CommandLine.Text;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using System.Text;
-using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Text.Json.Serialization.Metadata;
-using System.Threading.Tasks;
 
 namespace zbundler;
 
@@ -17,8 +8,7 @@ public enum CompilationMode
     JS,
     CSS,
     SASS,
-    SCSS,
-    MD
+    SCSS
 }
 
 [Verb("run", false, HelpText = "Run the builder without an configuration file, using command line arguments.")]
@@ -42,6 +32,8 @@ public class Configuration
 
     [Option('e', "extension", Required = false, HelpText = "Set an additional extension to the builder.")]
     public IEnumerable<string>? AdditionalExtensions { get; set; } = Array.Empty<string>();
+
+    public Dictionary<string, object?> Options { get; set; } = new Dictionary<string, object?>();
 
     private List<string> includedFiles = new List<string>();
 
@@ -82,7 +74,6 @@ public class Configuration
             CompilationMode.CSS => extension.EndsWith(".css"),
             CompilationMode.SASS => extension.EndsWith(".sass"),
             CompilationMode.SCSS => extension.EndsWith(".scss"),
-            CompilationMode.MD => extension.EndsWith(".md"),
             _ => false
         };
 
@@ -146,7 +137,7 @@ public class Configuration
             else
             {
                 Build.PrintBuildError("Couldn't find the specified file or directory " + includePath);
-                Build.Exit(3);
+                Build.SafeExit(3);
             }
         }
         return output.ToArray();

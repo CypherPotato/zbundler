@@ -14,7 +14,6 @@
 
 	<ItemGroup>
 		<PackageReference Include="CommandLineParser" Version="2.9.1" />
-		<PackageReference Include="Markdig" Version="0.31.0" />
 		<PackageReference Include="NUglify" Version="1.20.7" />
 		<PackageReference Include="System.Runtime.Caching" Version="7.0.0" />
 	</ItemGroup>
@@ -26,22 +25,11 @@
 	</ItemGroup>
 
 	<ItemGroup>
+	  <ProjectReference Include="..\simple-css-nesting\simple-css-nesting\src\SimpleCSSCompiler.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
 		<Service Include="{508349b6-6b84-4df5-91f0-309beebad82d}" />
-	</ItemGroup>
-
-	<ItemGroup>
-		<Compile Update="src\AssemblyInfo.cs">
-			<DesignTime>True</DesignTime>
-			<AutoGen>True</AutoGen>
-			<DependentUpon>AssemblyInfo.tt</DependentUpon>
-		</Compile>
-	</ItemGroup>
-
-	<ItemGroup>
-		<None Update="src\AssemblyInfo.tt">
-			<Generator>TextTemplatingFileGenerator</Generator>
-			<LastGenOutput>AssemblyInfo.cs</LastGenOutput>
-		</None>
 	</ItemGroup>
 
 </Project>
